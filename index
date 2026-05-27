@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reto de Historias · AFD</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f4f0;color:#1a1a1a;min-height:100vh;padding:2rem 1rem}
+.container{max-width:720px;margin:0 auto}
+
+/* LOGIN */
+.login-wrap{min-height:80vh;display:flex;align-items:center;justify-content:center}
+.login-card{background:#fff;border:1px solid #e0ddd6;border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:420px;text-align:center}
+.login-card h2{font-size:20px;font-weight:700;color:#111;margin-bottom:6px}
+.login-card p{font-size:14px;color:#888;margin-bottom:1.75rem;line-height:1.6}
+.login-card input{width:100%;padding:12px 16px;font-size:15px;border:1px solid #ddd;border-radius:10px;margin-bottom:12px;font-family:inherit;transition:border-color .15s;text-align:center}
+.login-card input:focus{outline:none;border-color:#38ada9;box-shadow:0 0 0 3px rgba(56,173,169,.1)}
+.btn-login{width:100%;padding:12px;background:#38ada9;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s}
+.btn-login:hover{background:#2a8a86}
+.btn-login:disabled{background:#a8d8d7;cursor:not-allowed}
+.login-error{margin-top:12px;font-size:13px;color:#c0392b;background:#fdf0ef;border-radius:8px;padding:10px;display:none}
+
+/* HEADER */
+.header{margin-bottom:1.5rem;padding-bottom:1.25rem;border-bottom:1px solid #e0ddd6;display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.header-text h1{font-size:22px;font-weight:700;color:#111;margin-bottom:4px}
+.header-text p{font-size:14px;color:#888;line-height:1.5}
+.header-user{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.user-badge{font-size:13px;color:#2a8a86;background:#e8f7f7;padding:6px 12px;border-radius:20px;font-weight:500}
+.btn-salir{font-size:13px;color:#999;background:none;border:1px solid #ddd;border-radius:8px;padding:6px 12px;cursor:pointer;font-family:inherit;transition:all .15s}
+.btn-salir:hover{color:#333;border-color:#bbb}
+
+/* STEP BAR */
+.step-bar{display:flex;margin-bottom:1.75rem;border-radius:10px;overflow:hidden;border:1px solid #e0ddd6}
+.step-item{flex:1;padding:10px 4px;text-align:center;font-size:11px;font-weight:500;color:#999;background:#fff;cursor:pointer;transition:all .2s;border-right:1px solid #e0ddd6}
+.step-item:last-child{border-right:none}
+.step-item.active{background:#38ada9;color:#fff}
+.step-item.done{background:#e8f7f7;color:#2a8a86}
+.step-num{display:block;font-size:10px;opacity:.7;margin-bottom:2px}
+
+/* PROGRESS */
+.progress-wrap{margin-bottom:1.5rem}
+.progress-label{display:flex;justify-content:space-between;font-size:12px;color:#888;margin-bottom:6px}
+.progress-bar{height:6px;background:#e0ddd6;border-radius:10px;overflow:hidden}
+.progress-fill{height:100%;background:#38ada9;border-radius:10px;transition:width .4s ease}
+
+/* AUTOSAVE */
+.autosave-bar{display:flex;align-items:center;gap:8px;font-size:12px;color:#aaa;margin-bottom:1.25rem;min-height:20px}
+.autosave-bar.guardando{color:#38ada9}
+.autosave-bar.guardado{color:#888}
+.autosave-bar.error{color:#c0392b}
+
+/* VIEWS */
+.view{display:none}
+.view.active{display:block}
+
+/* SECTION LABEL */
+.section-label{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#999;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.section-label::after{content:'';flex:1;height:1px;background:#e0ddd6}
+
+/* INTRO BOX */
+.intro-box{background:#fff;border:1px solid #e0ddd6;border-radius:10px;padding:16px;margin-bottom:1.5rem;font-size:14px;color:#555;line-height:1.6}
+.intro-box strong{color:#111}
+
+/* FIELDS */
+.field-group{margin-bottom:1.25rem}
+.field-label{display:block;font-size:13px;font-weight:600;color:#333;margin-bottom:5px}
+.field-hint{font-size:12px;color:#999;margin-bottom:6px;line-height:1.5}
+input[type="text"],input[type="date"],textarea{width:100%;font-size:14px;color:#1a1a1a;background:#fff;border:1px solid #ddd;border-radius:8px;padding:10px 14px;font-family:inherit;resize:vertical;transition:border-color .15s;line-height:1.5}
+input[type="text"]:focus,input[type="date"]:focus,textarea:focus{outline:none;border-color:#38ada9;box-shadow:0 0 0 3px rgba(56,173,169,.1)}
+textarea{min-height:90px}
+
+/* CONCLUSION BLOCKS */
+.conclusion-block{background:#fff;border:1px solid #e0ddd6;border-radius:10px;padding:16px;margin-bottom:12px}
+.conclusion-prompt{font-size:15px;font-weight:600;color:#111;margin-bottom:4px}
+.conclusion-prompt .dot{color:#38ada9;margin-right:6px}
+.conclusion-hint{font-size:12px;color:#999;margin-bottom:8px;line-height:1.5}
+
+/* DESTACADOS */
+.destacados-wrap{margin-bottom:1.5rem}
+.destacado-tag{display:inline-flex;align-items:center;gap:8px;background:#e8f7f7;border:1px solid #9FE1CB;color:#0F6E56;font-size:13px;font-weight:500;padding:8px 14px;border-radius:20px;margin:4px;cursor:pointer;transition:all .15s}
+.destacado-tag.inactive{background:#f5f4f0;border-color:#ddd;color:#999}
+.destacado-tag .check{font-size:14px}
+.destacados-edit-hint{font-size:12px;color:#999;margin-top:8px;font-style:italic}
+
+/* BROLLS */
+.brolls-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem}
+@media(max-width:480px){.brolls-grid{grid-template-columns:1fr}}
+.broll-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fff;border:1px solid #ddd;border-radius:8px;cursor:pointer;transition:all .15s;font-size:13px;color:#333}
+.broll-item:hover{border-color:#38ada9;background:#f9fefe}
+.broll-item.selected{border-color:#38ada9;background:#e8f7f7;color:#0F6E56}
+.broll-item input{accent-color:#38ada9;flex-shrink:0}
+
+/* CALENDARIO */
+.calendario-preview{background:#fff;border:1px solid #e0ddd6;border-radius:12px;padding:1.25rem;margin-top:1rem}
+.calendario-preview h4{font-size:14px;font-weight:600;color:#111;margin-bottom:1rem}
+.cal-item{display:flex;align-items:flex-start;gap:12px;padding:8px 0;border-bottom:1px solid #f0ede8}
+.cal-item:last-child{border-bottom:none}
+.cal-dia{font-size:12px;font-weight:600;color:#38ada9;min-width:60px;flex-shrink:0;padding-top:1px}
+.cal-angulo{font-size:13px;color:#333;line-height:1.4}
+.cal-bloque{font-size:11px;color:#999;margin-top:2px}
+
+/* REGISTRO BLOQUEADO */
+.registro-locked{background:#f5f4f0;border:1px dashed #ddd;border-radius:12px;padding:1.5rem;text-align:center;margin-bottom:1rem}
+.registro-locked .lock-icon{font-size:28px;margin-bottom:8px}
+.registro-locked p{font-size:14px;color:#888;line-height:1.6}
+.registro-locked strong{color:#333}
+
+/* NAV */
+.nav-row{display:flex;justify-content:space-between;align-items:center;margin-top:2rem;padding-top:1.5rem;border-top:1px solid #e0ddd6;flex-wrap:wrap;gap:10px}
+.step-info{font-size:13px;color:#999}
+.btn{padding:10px 22px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;border:1px solid #ddd;background:#fff;color:#333;font-family:inherit}
+.btn:hover{background:#f0f0f0}
+.btn.primary{background:#38ada9;border-color:#38ada9;color:#fff}
+.btn.primary:hover{background:#2a8a86}
+.btn.dark{background:#111;border-color:#111;color:#fff;padding:12px 28px;font-size:15px}
+.btn.dark:hover{background:#333}
+.btn.whatsapp{background:#25D366;border-color:#25D366;color:#fff}
+.btn.whatsapp:hover{background:#1da851}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#111;color:#fff;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:500;transition:transform .3s ease;z-index:1000;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+@media print{
+  body{background:#fff;padding:0}
+  .step-bar,.nav-row,.autosave-bar,.header-user,.btn,.toast,#login-screen{display:none!important}
+  .view{display:block!important}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen" class="login-wrap">
+  <div class="login-card">
+    <div style="margin-bottom:1.5rem;display:flex;align-items:center;justify-content:center;">
+      <img src="logo-afd-blanco.png" alt="Academia de Fisioterapia Digital" style="height:60px;width:auto;display:block;">
+    </div>
+    <h2>Reto de Historias</h2>
+    <p>Introduce tu correo electrónico con el que entras a la formación para acceder al ejercicio y guardar tu progreso.</p>
+    <input type="email" id="login-email" placeholder="tucorreo@email.com" onkeydown="if(event.key==='Enter') doLogin()">
+    <button class="btn-login" id="btn-login" onclick="doLogin()">Entrar</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen" style="display:none">
+<div class="container">
+
+  <div class="header">
+    <div class="header-text">
+      <h1>Reto de Historias</h1>
+      <p>Clase 3 · 15 sesiones de historias en 30 días. Un ángulo por día, día sí día no.</p>
+    </div>
+    <div class="header-user">
+      <span class="user-badge" id="user-name">—</span>
+      <button class="btn-salir" onclick="doLogout()">Salir</button>
+    </div>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-label">
+      <span>Progreso del ejercicio</span>
+      <span id="progress-pct">0%</span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <div class="step-bar">
+    <div class="step-item active" id="step0" onclick="goTo('view-contexto')"><span class="step-num">Bloque 0</span>Tú y tu paciente</div>
+    <div class="step-item" id="step1" onclick="goTo('view-destacados')"><span class="step-num">Bloque 1</span>Destacados</div>
+    <div class="step-item" id="step2" onclick="goTo('view-brolls')"><span class="step-num">Bloque 2</span>B-rolls</div>
+    <div class="step-item" id="step3" onclick="goTo('view-calendario')"><span class="step-num">Bloque 3</span>Calendario</div>
+    <div class="step-item" id="step4" onclick="goTo('view-registro')"><span class="step-num">Bloque 4</span>Registro</div>
+  </div>
+
+  <div class="autosave-bar" id="autosave-bar">
+    <span id="autosave-text">Los cambios se guardan automáticamente</span>
+  </div>
+
+  <!-- BLOQUE 0: CONTEXTO -->
+  <div class="view active" id="view-contexto">
+    <p class="section-label">Bloque 0 · Tú y tu paciente</p>
+    <div class="intro-box">Este bloque es el contexto que va a alimentar todo lo que genere la IA después. <strong>No lo pienses demasiado — escribe como si le estuvieras contando esto a alguien de confianza.</strong></div>
+
+    <div class="conclusion-block">
+      <p class="conclusion-prompt"><span class="dot">✦</span>¿A qué tipo de paciente quieres ayudar?</p>
+      <p class="conclusion-hint">No el diagnóstico clínico. La persona. ¿Quién es, cómo vive, en qué momento de su vida está cuando llega a ti?</p>
+      <textarea id="paciente_quien" oninput="scheduleAutosave()" placeholder="Ej: Mujeres de 30 a 45 años que llevan meses con dolor de espalda, que trabajan muchas horas sentadas y sienten que su cuerpo les está fallando..."></textarea>
+    </div>
+
+    <div class="conclusion-block">
+      <p class="conclusion-prompt"><span class="dot">✦</span>¿Cuál es el problema principal que atraviesa ese paciente?</p>
+      <p class="conclusion-hint">No el síntoma. El problema real detrás del síntoma. Lo que le quita el sueño, lo que le frena, lo que le genera frustración día a día.</p>
+      <textarea id="paciente_problema" oninput="scheduleAutosave()" placeholder="Ej: No es solo el dolor — es el miedo a que nunca se vaya, la sensación de que su cuerpo ya no responde, la frustración de haber probado de todo sin resultado..."></textarea>
+    </div>
+
+    <div class="conclusion-block">
+      <p class="conclusion-prompt"><span class="dot">✦</span>¿Qué ha intentado ya antes de llegar a ti?</p>
+      <p class="conclusion-hint">Otros tratamientos, otros profesionales, soluciones que no funcionaron. Esto define por qué tú eres diferente.</p>
+      <textarea id="paciente_intentado" oninput="scheduleAutosave()" placeholder="Ej: Ha ido al médico, le han dado antiinflamatorios, ha probado masajes, ha visto vídeos de ejercicios en YouTube sin saber si los hace bien..."></textarea>
+    </div>
+
+    <div class="conclusion-block">
+      <p class="conclusion-prompt"><span class="dot">✦</span>¿Por qué elegiste trabajar con este tipo de paciente?</p>
+      <p class="conclusion-hint">Tu historia con este problema. Si lo has vivido tú, alguien cercano, o lo ves constantemente en consulta y algo en ti necesita hacer algo al respecto.</p>
+      <textarea id="por_que_este_paciente" oninput="scheduleAutosave()" placeholder="Ej: Lo viví yo misma después del parto. Nadie me explicó qué me estaba pasando y tardé años en encontrar a alguien que me ayudara de verdad..."></textarea>
+    </div>
+
+    <div class="conclusion-block">
+      <p class="conclusion-prompt"><span class="dot">✦</span>¿Qué es lo que más te indigna de cómo se trata este problema en tu sector?</p>
+      <p class="conclusion-hint">El mito que más te cansa escuchar. La creencia que más daño hace. Lo que cambiarías si pudieras.</p>
+      <textarea id="indigna_del_sector" oninput="scheduleAutosave()" placeholder="Ej: Que se normalice el dolor como algo inevitable. Que se le diga a la gente 'tienes que aprender a vivir con ello' sin haber explorado todas las opciones..."></textarea>
+    </div>
+
+    <div class="conclusion-block">
+      <p class="conclusion-prompt"><span class="dot">✦</span>¿Qué es lo primero que trabajas cuando alguien llega a ti con este problema?</p>
+      <p class="conclusion-hint">No el protocolo clínico. La primera conversación, el primer cambio de perspectiva, el primer paso real que das con ellos.</p>
+      <textarea id="primer_paso_contigo" oninput="scheduleAutosave()" placeholder="Ej: Primero les ayudo a entender qué está pasando realmente en su cuerpo. Sin tecnicismos. Cuando dejan de tener miedo al dolor, todo cambia..."></textarea>
+    </div>
+
+    <div class="conclusion-block">
+      <p class="conclusion-prompt"><span class="dot">✦</span>¿Cómo quieres que se sienta alguien después de ver tus historias?</p>
+      <p class="conclusion-hint">No lo que quieres que piensen. Lo que quieres que sientan. Esa emoción es la que va a guiar el tono de todo el contenido.</p>
+      <textarea id="como_quieres_que_sienta" oninput="scheduleAutosave()" placeholder="Ej: Que no está sola. Que hay una profesional que entiende exactamente lo que está viviendo. Que tiene opciones reales..."></textarea>
+    </div>
+
+    <div class="nav-row">
+      <span class="step-info">Bloque 0 de 4</span>
+      <button class="btn primary" onclick="goTo('view-destacados')">Tus destacados →</button>
+    </div>
+  </div>
+
+  <!-- BLOQUE 1: DESTACADOS -->
+  <div class="view" id="view-destacados">
+    <p class="section-label">Bloque 1 · Tus destacados</p>
+    <div class="intro-box">Hemos recuperado los destacados que elegiste en el ejercicio anterior. <strong>Confirma los que siguen activos o modifícalos si has cambiado de idea.</strong> Las historias del reto van a alimentar directamente estos destacados.</div>
+
+    <div class="field-group">
+      <label class="field-label">Tus destacados activos</label>
+      <p class="field-hint">Pulsa para activar o desactivar. Puedes añadir uno nuevo si lo necesitas.</p>
+      <div class="destacados-wrap" id="destacados-container"></div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <input type="text" id="nuevo-destacado" placeholder="Añadir destacado personalizado..." style="flex:1">
+        <button class="btn" onclick="añadirDestacado()" style="white-space:nowrap">+ Añadir</button>
+      </div>
+    </div>
+
+    <div class="nav-row">
+      <button class="btn" onclick="goTo('view-contexto')">← Volver</button>
+      <span class="step-info">Bloque 1 de 4</span>
+      <button class="btn primary" onclick="goTo('view-brolls')">Tus b-rolls →</button>
+    </div>
+  </div>
+
+  <!-- BLOQUE 2: BROLLS -->
+  <div class="view" id="view-brolls">
+    <p class="section-label">Bloque 2 · Tus b-rolls</p>
+    <div class="intro-box">Antes de empezar el reto, graba estos clips esta semana. <strong>No tienen que ser perfectos — 5 a 10 segundos cada uno.</strong> Márcalos a medida que los grabes.</div>
+
+    <div class="field-group">
+      <label class="field-label">¿Cuáles vas a grabar?</label>
+      <div class="brolls-grid" id="brolls-container"></div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">¿Tienes otros b-rolls en mente?</label>
+      <p class="field-hint">Clips específicos de tu especialidad o tu espacio de trabajo que quieras añadir.</p>
+      <textarea id="brolls_propios" placeholder="Ej: Plano de mis manos durante una sesión, mi sala de tratamiento, material de fisio..." oninput="scheduleAutosave()" style="min-height:60px"></textarea>
+    </div>
+
+    <div class="nav-row">
+      <button class="btn" onclick="goTo('view-destacados')">← Volver</button>
+      <span class="step-info">Bloque 2 de 4</span>
+      <button class="btn primary" onclick="goTo('view-calendario')">Tu calendario →</button>
+    </div>
+  </div>
+
+  <!-- BLOQUE 3: CALENDARIO -->
+  <div class="view" id="view-calendario">
+    <p class="section-label">Bloque 3 · Tu calendario</p>
+    <div class="intro-box">Elige el día en que vas a empezar y te generamos el calendario completo de 30 días. <strong>Un ángulo por día, día sí día no. Sin decisiones, solo ejecutar.</strong></div>
+
+    <div class="field-group">
+      <label class="field-label">¿Qué día empiezas?</label>
+      <p class="field-hint">Elige una fecha realista. Mejor mañana que el lunes que viene.</p>
+      <input type="date" id="fecha_inicio" onchange="generarCalendario(); scheduleAutosave()">
+    </div>
+
+    <div id="calendario-container"></div>
+
+    <div class="nav-row">
+      <button class="btn" onclick="goTo('view-brolls')">← Volver</button>
+      <span class="step-info">Bloque 3 de 4</span>
+      <button class="btn dark" onclick="descargarMD()">⬇️ Descargar mi Reto de Historias</button>
+    </div>
+  </div>
+
+  <!-- BLOQUE 4: REGISTRO -->
+  <div class="view" id="view-registro">
+    <p class="section-label">Bloque 4 · Registro del reto</p>
+
+    <div class="registro-locked" id="registro-locked">
+      <div class="lock-icon">📋</div>
+      <p><strong>Este bloque es para después.</strong><br>Vuelve aquí cuando hayas publicado tus primeras historias y cuéntanos cómo fue. Lo que aprendas aquí vale más que cualquier teoría.</p>
+    </div>
+
+    <div id="registro-form">
+      <div class="conclusion-block">
+        <p class="conclusion-prompt"><span class="dot">✦</span>¿Cuántas historias publiqué?</p>
+        <input type="text" id="historias_publicadas" placeholder="Número de historias publicadas..." oninput="scheduleAutosave()">
+      </div>
+      <div class="conclusion-block">
+        <p class="conclusion-prompt"><span class="dot">✦</span>¿Qué formato me resultó más fácil?</p>
+        <textarea id="formato_facil" oninput="scheduleAutosave()" style="min-height:60px" placeholder="Foto con texto, b-roll, cara a cámara..."></textarea>
+      </div>
+      <div class="conclusion-block">
+        <p class="conclusion-prompt"><span class="dot">✦</span>¿Qué formato me dio más vergüenza?</p>
+        <textarea id="formato_verguenza" oninput="scheduleAutosave()" style="min-height:60px" placeholder="Y por qué crees que fue así..."></textarea>
+      </div>
+      <div class="conclusion-block">
+        <p class="conclusion-prompt"><span class="dot">✦</span>¿Alguien respondió? ¿Qué me sorprendió?</p>
+        <textarea id="alguien_respondio" oninput="scheduleAutosave()" style="min-height:60px" placeholder="Respuestas, reacciones, mensajes directos..."></textarea>
+      </div>
+      <div class="conclusion-block">
+        <p class="conclusion-prompt"><span class="dot">✦</span>¿Qué historia repetiría?</p>
+        <textarea id="historia_repetiria" oninput="scheduleAutosave()" style="min-height:60px" placeholder="El ángulo, el formato, el tema..."></textarea>
+      </div>
+      <div class="conclusion-block">
+        <p class="conclusion-prompt"><span class="dot">✦</span>¿Qué idea podría convertir en reel o carrusel más adelante?</p>
+        <textarea id="idea_para_futuro" oninput="scheduleAutosave()" style="min-height:60px" placeholder="Algo que surgió del reto y que merece más desarrollo..."></textarea>
+      </div>
+      <div class="conclusion-block">
+        <p class="conclusion-prompt"><span class="dot">✦</span>¿Qué he aprendido sobre mi resistencia a aparecer?</p>
+        <textarea id="aprendizaje_resistencia" oninput="scheduleAutosave()" style="min-height:80px" placeholder="Lo que esperabas que pasara vs lo que pasó realmente..."></textarea>
+      </div>
+
+      <div style="margin-top:1.5rem;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn whatsapp" onclick="compartirWhatsApp()">📲 Compartir resumen en el grupo</button>
+      </div>
+    </div>
+
+    <div class="nav-row">
+      <button class="btn" onclick="goTo('view-calendario')">← Volver</button>
+      <span class="step-info">Bloque 4 de 4</span>
+      <button class="btn dark" onclick="descargarMD()">⬇️ Descargar mi Reto de Historias</button>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://xmtmezkoebowgsbxeenv.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_rrBIvhm28Cgpb13g9daXZQ_yoc8HOHc';
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let alumnoId = null;
+let alumnoNombre = '';
+let ejercicioId = null;
+let saveTimer = null;
+
+const viewOrder = ['view-contexto','view-destacados','view-brolls','view-calendario','view-registro'];
+
+const brollsLista = [
+  'Escribiendo en un cuaderno',
+  'Trabajando en el ordenador',
+  'Preparando una sesión',
+  'Abriendo Canva o Instagram',
+  'Colocando el trípode',
+  'Caminando',
+  'Plano de manos',
+  'Plano de escritorio',
+  'Leyendo o revisando apuntes',
+  'Mirando a cámara sin hablar',
+  'Preparando café',
+  'Haciendo ejercicio',
+  'Ordenando material',
+  'Grabando pantalla',
+  'Plano de tu espacio de trabajo'
+];
+
+const angulos = [
+  { bloque: 'Estoy aquí', destacados: 'Sobre mí · Empieza aquí', angulo: 'El espejo' },
+  { bloque: 'Estoy aquí', destacados: 'Sobre mí · Empieza aquí', angulo: 'La declaración' },
+  { bloque: 'Estoy aquí', destacados: 'Sobre mí · Empieza aquí', angulo: 'El contexto clínico' },
+  { bloque: 'Estoy aquí', destacados: 'Sobre mí · Empieza aquí', angulo: 'La ruptura' },
+  { bloque: 'Estoy aquí', destacados: 'Sobre mí · Empieza aquí', angulo: 'El proceso' },
+  { bloque: 'Estoy construyendo', destacados: 'Cómo trabajo · Método', angulo: 'El detrás de cámara' },
+  { bloque: 'Estoy construyendo', destacados: 'Cómo trabajo · Método', angulo: 'El mito que rompo' },
+  { bloque: 'Estoy construyendo', destacados: 'Cómo trabajo · Método', angulo: 'Lo que nadie te cuenta' },
+  { bloque: 'Estoy construyendo', destacados: 'Cómo trabajo · Método', angulo: 'El antes y el proceso' },
+  { bloque: 'Estoy construyendo', destacados: 'Cómo trabajo · Método', angulo: 'Lo que estoy aprendiendo' },
+  { bloque: 'Estoy escuchando', destacados: 'Preguntas frecuentes · Casos · Testimonios', angulo: 'La situación cotidiana' },
+  { bloque: 'Estoy escuchando', destacados: 'Preguntas frecuentes · Casos · Testimonios', angulo: 'La validación' },
+  { bloque: 'Estoy escuchando', destacados: 'Preguntas frecuentes · Casos · Testimonios', angulo: 'La pregunta que incomoda' },
+  { bloque: 'Estoy escuchando', destacados: 'Preguntas frecuentes · Casos · Testimonios', angulo: 'El mito de tu sector' },
+  { bloque: 'Estoy escuchando', destacados: 'Preguntas frecuentes · Casos · Testimonios', angulo: 'La caja abierta' },
+];
+
+const estado = {
+  destacados: [],
+  brolls: []
+};
+
+// LOGIN
+async function doLogin() {
+  var email = document.getElementById('login-email').value.trim().toLowerCase();
+  if (!email) return;
+  var btn = document.getElementById('btn-login');
+  var err = document.getElementById('login-error');
+  btn.disabled = true; btn.textContent = 'Comprobando...'; err.style.display = 'none';
+  var res = await db.from('alumnos').select('id,nombre,email,activo').eq('email',email).single();
+  if (res.error || !res.data) {
+    err.textContent = 'Este correo no está autorizado. Contacta con Cristina.';
+    err.style.display = 'block'; btn.disabled = false; btn.textContent = 'Entrar'; return;
+  }
+  if (!res.data.activo) {
+    err.textContent = 'Tu acceso está desactivado. Contacta con Cristina.';
+    err.style.display = 'block'; btn.disabled = false; btn.textContent = 'Entrar'; return;
+  }
+  alumnoId = res.data.id;
+  alumnoNombre = res.data.nombre;
+  document.getElementById('user-name').textContent = res.data.nombre.split(' ')[0];
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = 'block';
+  buildBrolls();
+  await cargarDestacadosEjercicio2();
+  await cargarProgreso();
+}
+
+function doLogout() {
+  alumnoId = null; alumnoNombre = ''; ejercicioId = null;
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app-screen').style.display = 'none';
+  document.getElementById('login-email').value = '';
+}
+
+// CARGAR DESTACADOS DEL EJERCICIO 2
+async function cargarDestacadosEjercicio2() {
+  var res = await db.from('ejercicio_perfil_visible').select('destacados').eq('alumno_id', alumnoId).single();
+  var destacadosBase = ['Empieza aquí','Sobre mí','Cómo trabajo','Método','Casos','Testimonios','Preguntas frecuentes','Recursos'];
+  if (res.data && res.data.destacados && Object.keys(res.data.destacados).length > 0) {
+    estado.destacados = Object.keys(res.data.destacados);
+  } else {
+    estado.destacados = destacadosBase;
+  }
+  renderDestacados();
+}
+
+function renderDestacados() {
+  var cont = document.getElementById('destacados-container');
+  cont.innerHTML = '';
+  estado.destacados.forEach(function(d) {
+    var tag = document.createElement('span');
+    tag.className = 'destacado-tag';
+    tag.dataset.nombre = d;
+    tag.innerHTML = '<span class="check">✓</span> ' + d;
+    tag.onclick = function() { toggleDestacadoTag(d, tag); };
+    cont.appendChild(tag);
+  });
+}
+
+function toggleDestacadoTag(nombre, el) {
+  el.classList.toggle('inactive');
+  scheduleAutosave();
+}
+
+function añadirDestacado() {
+  var input = document.getElementById('nuevo-destacado');
+  var val = input.value.trim();
+  if (!val) return;
+  estado.destacados.push(val);
+  renderDestacados();
+  input.value = '';
+  scheduleAutosave();
+}
+
+function getDestacadosActivos() {
+  var activos = [];
+  document.querySelectorAll('.destacado-tag:not(.inactive)').forEach(function(t) {
+    activos.push(t.dataset.nombre);
+  });
+  return activos;
+}
+
+// BROLLS
+function buildBrolls() {
+  var cont = document.getElementById('brolls-container');
+  cont.innerHTML = '';
+  brollsLista.forEach(function(b) {
+    var div = document.createElement('div');
+    div.className = 'broll-item';
+    div.innerHTML = '<input type="checkbox" onchange="toggleBroll(\''+b+'\', this.checked)"> ' + b;
+    cont.appendChild(div);
+    div.onclick = function(e) {
+      if (e.target.tagName !== 'INPUT') {
+        var cb = div.querySelector('input');
+        cb.checked = !cb.checked;
+        toggleBroll(b, cb.checked);
+      }
+    };
+  });
+}
+
+function toggleBroll(nombre, checked) {
+  var div = document.querySelector('.broll-item input[onchange*="'+nombre.replace(/'/g,"\\'")+'"]');
+  if (div) div.closest('.broll-item').classList.toggle('selected', checked);
+  if (checked) { if (!estado.brolls.includes(nombre)) estado.brolls.push(nombre); }
+  else { estado.brolls = estado.brolls.filter(function(b){ return b !== nombre; }); }
+  scheduleAutosave();
+  actualizarProgreso();
+}
+
+// CALENDARIO
+function generarCalendario() {
+  var fechaInput = document.getElementById('fecha_inicio').value;
+  if (!fechaInput) return;
+  var cont = document.getElementById('calendario-container');
+  var fecha = new Date(fechaInput + 'T12:00:00');
+  var html = '<div class="calendario-preview"><h4>📅 Tu calendario de 30 días</h4>';
+  for (var i = 0; i < 15; i++) {
+    var dia = new Date(fecha);
+    dia.setDate(fecha.getDate() + (i * 2));
+    var fechaStr = dia.toLocaleDateString('es-ES', {weekday:'short', day:'numeric', month:'short'});
+    var a = angulos[i];
+    var bloqueColor = i < 5 ? '#38ada9' : i < 10 ? '#5ab8b4' : '#7dd0ce';
+    html += '<div class="cal-item">';
+    html += '<div class="cal-dia" style="color:'+bloqueColor+'">Día '+(i*2+1)+'<br><span style="font-weight:400;color:#999">'+fechaStr+'</span></div>';
+    html += '<div class="cal-angulo"><strong>'+a.angulo+'</strong><div class="cal-bloque">'+a.bloque+' · '+a.destacados+'</div></div>';
+    html += '</div>';
+  }
+  html += '</div>';
+  cont.innerHTML = html;
+  actualizarProgreso();
+}
+
+// CARGAR PROGRESO
+async function cargarProgreso() {
+  var res = await db.from('ejercicio_reto_historias').select('*').eq('alumno_id', alumnoId).single();
+  if (!res.data) return;
+  ejercicioId = res.data.id;
+  var d = res.data;
+  var campos = ['paciente_quien','paciente_problema','paciente_intentado','por_que_este_paciente','indigna_del_sector','primer_paso_contigo','como_quieres_que_sienta','brolls_propios','historias_publicadas','formato_facil','formato_verguenza','alguien_respondio','historia_repetiria','idea_para_futuro','aprendizaje_resistencia'];
+  campos.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el && d[id]) el.value = d[id];
+  });
+  if (d.destacados_confirmados && d.destacados_confirmados.length) {
+    estado.destacados = d.destacados_confirmados;
+    renderDestacados();
+  }
+  if (d.brolls_seleccionados && d.brolls_seleccionados.length) {
+    estado.brolls = d.brolls_seleccionados;
+    document.querySelectorAll('.broll-item').forEach(function(item) {
+      var texto = item.textContent.trim();
+      if (estado.brolls.includes(texto)) {
+        item.classList.add('selected');
+        item.querySelector('input').checked = true;
+      }
+    });
+  }
+  if (d.fecha_inicio) {
+    document.getElementById('fecha_inicio').value = d.fecha_inicio;
+    generarCalendario();
+  }
+  if (d.registro_completado) {
+    document.getElementById('registro-locked').style.display = 'none';
+  }
+  actualizarProgreso();
+  mostrarAutosave('guardado','Progreso recuperado ✓');
+}
+
+// GUARDAR
+function scheduleAutosave() { clearTimeout(saveTimer); mostrarAutosave('guardando','Guardando...'); saveTimer = setTimeout(saveProgress, 1500); }
+
+async function saveProgress() {
+  if (!alumnoId) return;
+  var registroTieneAlgo = v('historias_publicadas') || v('formato_facil') || v('aprendizaje_resistencia');
+  var payload = {
+    alumno_id: alumnoId,
+    paciente_quien: v('paciente_quien'),
+    paciente_problema: v('paciente_problema'),
+    paciente_intentado: v('paciente_intentado'),
+    por_que_este_paciente: v('por_que_este_paciente'),
+    indigna_del_sector: v('indigna_del_sector'),
+    primer_paso_contigo: v('primer_paso_contigo'),
+    como_quieres_que_sienta: v('como_quieres_que_sienta'),
+    destacados_confirmados: getDestacadosActivos(),
+    brolls_seleccionados: estado.brolls,
+    brolls_propios: v('brolls_propios'),
+    fecha_inicio: document.getElementById('fecha_inicio').value || null,
+    historias_publicadas: v('historias_publicadas') ? parseInt(v('historias_publicadas')) : null,
+    formato_facil: v('formato_facil'),
+    formato_verguenza: v('formato_verguenza'),
+    alguien_respondio: v('alguien_respondio'),
+    historia_repetiria: v('historia_repetiria'),
+    idea_para_futuro: v('idea_para_futuro'),
+    aprendizaje_resistencia: v('aprendizaje_resistencia'),
+    registro_completado: !!registroTieneAlgo,
+    porcentaje_completado: calcPct(),
+    completado: calcPct() === 100,
+  };
+  var res;
+  if (ejercicioId) {
+    res = await db.from('ejercicio_reto_historias').update(payload).eq('id', ejercicioId);
+  } else {
+    res = await db.from('ejercicio_reto_historias').insert(payload).select('id').single();
+    if (res.data) ejercicioId = res.data.id;
+  }
+  if (res.error) mostrarAutosave('error','Error al guardar. Revisa tu conexión.');
+  else { mostrarAutosave('guardado','Guardado automáticamente ✓'); actualizarProgreso(); }
+}
+
+function v(id) { var el = document.getElementById(id); return el ? el.value : ''; }
+
+function calcPct() {
+  var ok = 0, total = 10;
+  if (v('paciente_quien')) ok++;
+  if (v('paciente_problema')) ok++;
+  if (v('por_que_este_paciente')) ok++;
+  if (v('indigna_del_sector')) ok++;
+  if (v('como_quieres_que_sienta')) ok++;
+  if (getDestacadosActivos().length) ok++;
+  if (estado.brolls.length) ok++;
+  if (v('brolls_propios')) ok++;
+  if (document.getElementById('fecha_inicio').value) ok++;
+  if (v('aprendizaje_resistencia')) ok++;
+  return Math.round((ok/total)*100);
+}
+
+function actualizarProgreso() {
+  var pct = calcPct();
+  document.getElementById('progress-fill').style.width = pct+'%';
+  document.getElementById('progress-pct').textContent = pct+'%';
+}
+
+function mostrarAutosave(est, texto) {
+  document.getElementById('autosave-bar').className = 'autosave-bar ' + est;
+  document.getElementById('autosave-text').textContent = texto;
+}
+
+// NAVEGACIÓN
+function goTo(viewId) {
+  document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('active'); });
+  document.getElementById(viewId).classList.add('active');
+  var idx = viewOrder.indexOf(viewId);
+  document.querySelectorAll('.step-item').forEach(function(s,i){
+    s.classList.remove('active','done');
+    if(i===idx) s.classList.add('active');
+    else if(i<idx) s.classList.add('done');
+  });
+  if (viewId === 'view-registro') {
+    var tieneRegistro = v('historias_publicadas') || v('aprendizaje_resistencia');
+    if (tieneRegistro) document.getElementById('registro-locked').style.display = 'none';
+  }
+  window.scrollTo({top:0,behavior:'smooth'});
+  saveProgress();
+}
+
+// COMPARTIR WHATSAPP
+function compartirWhatsApp() {
+  var nombre = alumnoNombre.split(' ')[0];
+  var texto = '🎯 *Registro del Reto de Historias — ' + nombre + '*\n\n';
+  if (v('historias_publicadas')) texto += '📊 Historias publicadas: ' + v('historias_publicadas') + '\n';
+  if (v('formato_facil')) texto += '✅ Formato más fácil: ' + v('formato_facil') + '\n';
+  if (v('historia_repetiria')) texto += '🔁 Historia que repetiría: ' + v('historia_repetiria') + '\n';
+  if (v('idea_para_futuro')) texto += '💡 Idea para futuro: ' + v('idea_para_futuro') + '\n';
+  if (v('aprendizaje_resistencia')) texto += '🧠 Aprendizaje: ' + v('aprendizaje_resistencia') + '\n';
+  navigator.clipboard.writeText(texto).then(function(){
+    showToast('Resumen copiado. Pégalo en el grupo de WhatsApp.');
+  });
+}
+
+// DESCARGAR MD
+function descargarMD() {
+  saveProgress();
+  var nombre = alumnoNombre || 'Alumna';
+  var fecha = new Date().toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
+  var fechaInicio = document.getElementById('fecha_inicio').value;
+
+  var md = '# Mi Reto de Historias\n';
+  md += '### Academia de Fisioterapia Digital · Clase 3\n\n';
+  md += '**Alumna:** ' + nombre + '\n';
+  md += '**Fecha:** ' + fecha + '\n\n';
+  md += '---\n\n';
+
+  md += '## Contexto para la IA\n\n';
+  md += 'Soy fisioterapeuta y acabo de completar mi análisis de mercado (Tablero de Juego) y mi perfil base en redes sociales (Perfil Base Visible). ';
+  md += 'Ahora estoy preparando mi reto de historias: 15 sesiones de historias en 30 días, una por ángulo, día sí día no. ';
+  md += 'Este documento recoge mi contexto personal, mi paciente ideal, mis destacados activos y mi calendario. ';
+  md += 'Úsalo junto con mis documentos anteriores para generarme las 15 sesiones de historias personalizadas.\n\n';
+  md += '---\n\n';
+
+  md += '## Bloque 0 · Yo y mi paciente\n\n';
+  if (v('paciente_quien'))          md += '**¿A quién ayudo?**\n' + v('paciente_quien') + '\n\n';
+  if (v('paciente_problema'))       md += '**¿Cuál es su problema real?**\n' + v('paciente_problema') + '\n\n';
+  if (v('paciente_intentado'))      md += '**¿Qué ha intentado ya?**\n' + v('paciente_intentado') + '\n\n';
+  if (v('por_que_este_paciente'))   md += '**¿Por qué elegí trabajar con este paciente?**\n' + v('por_que_este_paciente') + '\n\n';
+  if (v('indigna_del_sector'))      md += '**¿Qué me indigna de cómo se trata este problema?**\n' + v('indigna_del_sector') + '\n\n';
+  if (v('primer_paso_contigo'))     md += '**¿Qué es lo primero que trabajamos juntos?**\n' + v('primer_paso_contigo') + '\n\n';
+  if (v('como_quieres_que_sienta')) md += '**¿Cómo quiero que se sienta alguien al ver mis historias?**\n' + v('como_quieres_que_sienta') + '\n\n';
+  md += '---\n\n';
+
+  md += '## Bloque 1 · Mis destacados activos\n\n';
+  var activos = getDestacadosActivos();
+  activos.forEach(function(d) { md += '- ' + d + '\n'; });
+  md += '\n---\n\n';
+
+  md += '## Bloque 2 · Mis b-rolls\n\n';
+  if (estado.brolls.length) {
+    estado.brolls.forEach(function(b) { md += '- ' + b + '\n'; });
+    md += '\n';
+  }
+  if (v('brolls_propios')) md += '**B-rolls propios:**\n' + v('brolls_propios') + '\n\n';
+  md += '---\n\n';
+
+  md += '## Bloque 3 · Mi calendario de 30 días\n\n';
+  if (fechaInicio) {
+    var fechaBase = new Date(fechaInicio + 'T12:00:00');
+    var bloqueActual = '';
+    for (var i = 0; i < 15; i++) {
+      var dia = new Date(fechaBase);
+      dia.setDate(fechaBase.getDate() + (i * 2));
+      var fechaStr = dia.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
+      var a = angulos[i];
+      if (a.bloque !== bloqueActual) {
+        bloqueActual = a.bloque;
+        md += '### ' + a.bloque + '\n*Alimenta: ' + a.destacados + '*\n\n';
+      }
+      md += '**Día ' + (i*2+1) + ' · ' + fechaStr + '**\n';
+      md += 'Ángulo: ' + a.angulo + '\n\n';
+    }
+  }
+  md += '---\n\n';
+
+  if (v('aprendizaje_resistencia')) {
+    md += '## Bloque 4 · Registro del reto\n\n';
+    if (v('historias_publicadas'))  md += '**Historias publicadas:** ' + v('historias_publicadas') + '\n\n';
+    if (v('formato_facil'))         md += '**Formato más fácil:** ' + v('formato_facil') + '\n\n';
+    if (v('formato_verguenza'))     md += '**Formato con más vergüenza:** ' + v('formato_verguenza') + '\n\n';
+    if (v('alguien_respondio'))     md += '**¿Alguien respondió?** ' + v('alguien_respondio') + '\n\n';
+    if (v('historia_repetiria'))    md += '**Historia que repetiría:** ' + v('historia_repetiria') + '\n\n';
+    if (v('idea_para_futuro'))      md += '**Idea para futuro contenido:** ' + v('idea_para_futuro') + '\n\n';
+    if (v('aprendizaje_resistencia')) md += '**Aprendizaje sobre mi resistencia:** ' + v('aprendizaje_resistencia') + '\n\n';
+    md += '---\n\n';
+  }
+
+  md += '## Prompt para la IA\n\n';
+  md += 'Pega este documento junto con tu Tablero de Juego y tu Perfil Base Visible en Claude o ChatGPT con este mensaje:\n\n';
+  md += '> *"Eres un experto en comunicación digital y psicología del consumidor. ';
+  md += 'Te adjunto tres documentos: mi Tablero de Juego (análisis de mercado), mi Perfil Base Visible y mi Reto de Historias. ';
+  md += 'Léelos en orden y úsalos como contexto completo.\n\n';
+  md += 'Primero evalúa mis destacados activos y los 15 ángulos del reto. Dime si el orden tiene sentido para construir mi presencia de forma progresiva y sugiere ajustes si los necesitas.\n\n';
+  md += 'Después genera las 15 sesiones de historias completas, una por ángulo, en el orden exacto del calendario. ';
+  md += 'Cada sesión debe tener entre 3 y 5 historias secuenciadas con narrativa interna — no historias sueltas, sino una secuencia que construya una mini historia dentro del mismo día de publicación. ';
+  md += 'Para cada historia incluye: formato recomendado (foto con texto, b-roll con texto o cara a cámara), texto para pantalla o guión si es a cámara, y si aplica, una llamada a la acción sutil. ';
+  md += 'Usa estructuras validadas de psicología del consumidor y marketing de contenidos, pero que suenen naturales y humanas, no comerciales.\n\n';
+  md += 'Adapta todo a mi especialidad, mi paciente ideal, mi tono y mis destacados. No me des teoría. Dame las sesiones listas para ejecutar."*\n\n';
+  md += '---\n\n';
+  md += '*Generado desde Reto de Historias · Academia de Fisioterapia Digital*\n';
+
+  var blob = new Blob([md], {type:'text/markdown;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'reto-historias-'+nombre.split(' ')[0].toLowerCase()+'-'+new Date().toISOString().slice(0,10)+'.md';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Descargado. Tu Reto de Historias está listo.');
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 3500);
+}
+</script>
+</body>
+</html>
